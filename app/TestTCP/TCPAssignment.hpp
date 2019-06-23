@@ -20,6 +20,9 @@
 
 namespace E
 {
+enum socket_state{CLOSED, LISTENING, SYN_SENT, SYN_RCVD, ESTAB};
+enum blocked_syscall{NONE, SYS_CONN, SYS_LIS, SYS_ACC, SYS_WRITE, SYS_READ};
+
 struct socket_base{
 	int domain;
 	int type;
@@ -27,11 +30,22 @@ struct socket_base{
 	bool is_bound = false;
 	bool is_connected = false;
 
+	socket_state state;
+
 	struct sockaddr src_addr;
 	struct sockaddr dst_addr;
 
 	socklen_t src_len;
 	socklen_t dst_len;
+
+	uint32_t seq_num;
+	uint32_t ack_num;
+	
+	blocked_syscall syscall;
+
+	UUID syscallUUID;
+
+	uint32_t send_base;
 
 };
 class TCPAssignment : public HostModule, public NetworkModule, public SystemCallInterface, private NetworkLog, private TimerModule
@@ -61,7 +75,14 @@ protected:
 	virtual void syscall_write(UUID syscallUUID, int pid, int sock_fd, void* buf, size_t count);
 	virtual void syscall_read(UUID syscallUUID, int pid, int fd, void* buf, size_t count);
 
+	virtual Packet *packet_signal(uint32_t src_ip, uint32_t dst_ip, unsigned short src_port,
+						unsigned short dst_port, uint32_t seq_num, uint32_t ack_num, unsigned short flag);
+
 	virtual unsigned short alloc_port(uint32_t);
+	virtual std::pair<int, int> search_quartet(uint32_t src_ip, uint32_t dst_ip, 
+												unsigned short src_port,unsigned short dst_port);
+	virtual std::pair<uint32_t, unsigned short> GetSrcIpPort(struct socket_base *);
+	virtual std::pair<uint32_t, unsigned short> GetDstIpPort(struct socket_base *);
 };
 
 
